@@ -1,475 +1,454 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Check, 
-  X, 
-  Settings, 
-  Layout,
-  User,
-  ShoppingBag,
-  Download,
-  Upload,
-  GripVertical
-} from 'lucide-react';
-
-/**
- * ==========================================
- * 設計風格配置區 (Design Config)
- * 你可以在這裡修改顏色與字型風格
- * ==========================================
- */
-const THEME = {
-  // 字型設定
-  fontFamily: "'精品點陣體9×9 1.92', 'Noto Sans TC', system-ui, sans-serif",
-  
-  // 主色調：復古深藍 (Vintage Navy)
-  primary: "#334155", 
-  primaryHover: "#1e293b", 
-  primaryLight: "#f1f5f9", 
-  
-  // 成功/金額顏色：橄欖綠 (Antique Olive)
-  success: "#4d7c0f", 
-  successBg: "#f7fee7", 
-  
-  // 警告/加購顏色：陶土棕 (Retro Terracotta)
-  warning: "#9a3412", 
-  warningBg: "#fff7ed", 
-  
-  // 背景與邊框
-  bgMain: "#f8fafc", 
-  bgCard: "#ffffff",
-  border: "#e2e8f0", 
-};
-
-export default function App() {
-  // --- 狀態管理 ---
-  const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem('commission_projects');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'default-1',
-        name: '我的第一個委託單',
-        items: [{ id: 'i1', name: '頭貼', price: 500 }],
-        records: []
-      }
-    ];
-  });
-
-  const [activeProjectId, setActiveProjectId] = useState(projects[0]?.id);
-  const [editingRecordId, setEditingRecordId] = useState(null);
-  const [editFormData, setEditFormData] = useState(null);
-  const [isConfiguringItems, setIsConfiguringItems] = useState(false);
-  
-  // 拖拽狀態
-  const [draggedItemIndex, setDraggedItemIndex] = useState(null);
-  const [draggedProjectIndex, setDraggedProjectIndex] = useState(null);
-
-  // --- 資料持久化 ---
-  useEffect(() => {
-    localStorage.setItem('commission_projects', JSON.stringify(projects));
-  }, [projects]);
-
-  const activeProject = useMemo(() => 
-    projects.find(p => p.id === activeProjectId) || projects[0], 
-    [projects, activeProjectId]
-  );
-
-  const totalAmount = useMemo(() => {
-    if (!activeProject) return 0;
-    return activeProject.records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
-  }, [activeProject]);
-
-  // --- 功能函式 ---
-
-  const exportData = () => {
-    const dataStr = JSON.stringify(projects, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `委託紀錄備份_${new Date().toLocaleDateString()}.json`;
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
-
-  const importData = (e) => {
-    const fileReader = new FileReader();
-    if (!e.target.files[0]) return;
-    fileReader.readAsText(e.target.files[0], "UTF-8");
-    fileReader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target.result);
-        if (Array.isArray(parsed)) {
-          setProjects(parsed);
-          setActiveProjectId(parsed[0].id);
-        }
-      } catch (err) {
-        console.error("導入失敗", err);
-      }
-    };
-  };
-
-  const onDragStart = (index, type) => {
-    if (type === 'project') setDraggedProjectIndex(index);
-    if (type === 'record') setDraggedItemIndex(index);
-  };
-
-  const onDragOver = (e) => e.preventDefault();
-
-  const onDrop = (index, type) => {
-    if (type === 'project' && draggedProjectIndex !== null) {
-      const newProjects = [...projects];
-      const draggedItem = newProjects[draggedProjectIndex];
-      newProjects.splice(draggedProjectIndex, 1);
-      newProjects.splice(index, 0, draggedItem);
-      setProjects(newProjects);
-      setDraggedProjectIndex(null);
-    }
-    if (type === 'record' && draggedItemIndex !== null) {
-      const newRecords = [...activeProject.records];
-      const draggedItem = newRecords[draggedItemIndex];
-      newRecords.splice(draggedItemIndex, 1);
-      newRecords.splice(index, 0, draggedItem);
-      const updatedProjects = projects.map(p => 
-        p.id === activeProjectId ? { ...p, records: newRecords } : p
-      );
-      setProjects(updatedProjects);
-      setDraggedItemIndex(null);
-    }
-  };
-
-  const addProject = () => {
-    const newId = Date.now().toString();
-    setProjects([...projects, { id: newId, name: '新委託分頁', items: [], records: [] }]);
-    setActiveProjectId(newId);
-  };
-
-  const deleteProject = (id, e) => {
-    e.stopPropagation();
-    if (projects.length <= 1) return;
-    const filtered = projects.filter(p => p.id !== id);
-    setProjects(filtered);
-    if (activeProjectId === id) setActiveProjectId(filtered[0].id);
-  };
-
-  const updateProjectName = (newName) => {
-    setProjects(projects.map(p => p.id === activeProjectId ? { ...p, name: newName } : p));
-  };
-
-  const updateProjectItems = (newItems) => {
-    setProjects(projects.map(p => p.id === activeProjectId ? { ...p, items: newItems } : p));
-  };
-
-  const addRecord = () => {
-    const newRecord = { id: Date.now().toString(), clientId: '新委託人', selectedItems: [], addonText: '', addonPrice: 0, amount: 0 };
-    setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: [newRecord, ...p.records] } : p));
-    setEditingRecordId(newRecord.id);
-    setEditFormData({ ...newRecord });
-  };
-
-  const saveEdit = () => {
-    setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: p.records.map(r => r.id === editingRecordId ? editFormData : r) } : p));
-    setEditingRecordId(null);
-  };
-
-  return (
-    <div 
-      className="flex h-screen overflow-hidden text-slate-800" 
-      style={{ backgroundColor: THEME.bgMain, fontFamily: THEME.fontFamily }}
-    >
-      
-      {/* 左側：分頁清單 */}
-      <aside className="w-64 bg-white border-r flex flex-col shadow-sm" style={{ borderColor: THEME.border }}>
-        <div className="p-6 flex items-center justify-between border-b" style={{ borderColor: THEME.border }}>
-          <h1 className="font-bold text-xl flex items-center gap-2" style={{ color: THEME.primary }}>
-            <Layout size={20} /> 排單管理
-          </h1>
-          <button onClick={addProject} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-            <Plus size={20} />
-          </button>
-        </div>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>委託排單管理系統</title>
+    <!-- 載入 Tailwind CSS (樣式框架) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 React 核心庫 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 載入 Babel (將 React 代碼轉換為瀏覽器可讀的代碼) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 載入 Lucide 圖示庫 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 載入您指定的點陣字體或備用字體 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {projects.map((p, index) => (
-            <div 
-              key={p.id}
-              draggable
-              onDragStart={() => onDragStart(index, 'project')}
-              onDragOver={onDragOver}
-              onDrop={() => onDrop(index, 'project')}
-              onClick={() => setActiveProjectId(p.id)}
-              className={`group flex items-center justify-between p-3 rounded-xl cursor-grab active:cursor-grabbing transition-all ${
-                activeProjectId === p.id 
-                ? 'shadow-md shadow-indigo-100' 
-                : 'hover:bg-slate-100 text-slate-600'
-              }`}
-              style={{ 
-                backgroundColor: activeProjectId === p.id ? THEME.primary : 'transparent',
-                color: activeProjectId === p.id ? '#ffffff' : ''
-              }}
-            >
-              <div className="flex items-center gap-3 truncate">
-                <GripVertical size={14} className="opacity-30 group-hover:opacity-100" />
-                <span className="font-medium truncate">{p.name}</span>
-              </div>
-              {projects.length > 1 && (
-                <button onClick={(e) => deleteProject(p.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/20 rounded">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        /* 隱藏捲軸但保持功能 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-        <div className="p-4 border-t space-y-2" style={{ borderColor: THEME.border }}>
-          <button onClick={exportData} className="w-full flex items-center justify-center gap-2 text-xs font-bold py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all">
-            <Download size={14} /> 導出 JSON 備份
-          </button>
-          <label className="w-full flex items-center justify-center gap-2 text-xs font-bold py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all cursor-pointer">
-            <Upload size={14} /> 導入紀錄檔案
-            <input type="file" className="hidden" accept=".json" onChange={importData} />
-          </label>
-        </div>
-      </aside>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
 
-      {/* 右側：內容區 (居中設計) */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
-          
-          {/* 上方資訊卡片 */}
-          <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200" style={{ borderColor: THEME.border }}>
-            <div className="flex flex-col md:flex-row justify-between gap-6">
-              <div className="space-y-4 flex-1">
-                <input 
-                  type="text" 
-                  value={activeProject?.name || ''} 
-                  onChange={(e) => updateProjectName(e.target.value)}
-                  className="text-4xl font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-100 focus:border-indigo-500 focus:outline-none transition-all w-full"
-                />
-                <div className="flex gap-3">
-                  <button onClick={() => setIsConfiguringItems(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-bold text-sm">
-                    <Settings size={16} /> 品項設定
-                  </button>
+        /**
+         * ==========================================
+         * ✨ 復古風設計風格配置區 (與您提供的代碼完全一致)
+         * ==========================================
+         */
+        const THEME = {
+            fontFamily: "'精品點陣體9×9 1.92', 'Noto Sans TC', system-ui, sans-serif",
+            primary: "#334155", 
+            primaryHover: "#1e293b", 
+            primaryLight: "#f1f5f9", 
+            success: "#4d7c0f", 
+            successBg: "#f7fee7", 
+            warning: "#9a3412", 
+            warningBg: "#fff7ed", 
+            bgMain: "#f8fafc", 
+            bgCard: "#ffffff",
+            border: "#e2e8f0", 
+        };
+
+        // 圖示組件封裝 (因為在純 HTML 中使用 Lucide 方式不同)
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (iconRef.current) {
+                    const LucideIcon = lucide.icons[name];
+                    if (LucideIcon) {
+                        // 建立圖示元素
+                        const svg = lucide.createIcons({
+                            icons: { [name]: LucideIcon },
+                            attrs: {
+                                width: size,
+                                height: size,
+                                class: className,
+                                'stroke-width': 2
+                            }
+                        });
+                    }
+                }
+            }, [name, size, className]);
+            
+            // 手動渲染 SVG 以確保相容性
+            const lucideName = name.charAt(0).toLowerCase() + name.slice(1).replace(/[A-Z]/g, m => "-" + m.toLowerCase());
+            return <i data-lucide={lucideName} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        function App() {
+            // --- 狀態管理 ---
+            const [projects, setProjects] = useState(() => {
+                const saved = localStorage.getItem('commission_projects');
+                return saved ? JSON.parse(saved) : [
+                    {
+                        id: 'default-1',
+                        name: '我的第一個委託單',
+                        items: [{ id: 'i1', name: '頭貼', price: 500 }],
+                        records: []
+                    }
+                ];
+            });
+
+            const [activeProjectId, setActiveProjectId] = useState(projects[0]?.id);
+            const [editingRecordId, setEditingRecordId] = useState(null);
+            const [editFormData, setEditFormData] = useState(null);
+            const [isConfiguringItems, setIsConfiguringItems] = useState(false);
+            
+            const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+            const [draggedProjectIndex, setDraggedProjectIndex] = useState(null);
+
+            useEffect(() => {
+                localStorage.setItem('commission_projects', JSON.stringify(projects));
+                // 每次狀態更新後重新啟動 Lucide 圖示
+                lucide.createIcons();
+            }, [projects, activeProjectId, editingRecordId, isConfiguringItems]);
+
+            const activeProject = useMemo(() => 
+                projects.find(p => p.id === activeProjectId) || projects[0], 
+                [projects, activeProjectId]
+            );
+
+            const totalAmount = useMemo(() => {
+                if (!activeProject) return 0;
+                return activeProject.records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+            }, [activeProject]);
+
+            // --- 功能函式 ---
+            const exportData = () => {
+                const dataStr = JSON.stringify(projects, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', `委託紀錄備份_${new Date().toLocaleDateString()}.json`);
+                linkElement.click();
+            };
+
+            const importData = (e) => {
+                const fileReader = new FileReader();
+                if (!e.target.files[0]) return;
+                fileReader.readAsText(e.target.files[0], "UTF-8");
+                fileReader.onload = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        if (Array.isArray(parsed)) {
+                            setProjects(parsed);
+                            setActiveProjectId(parsed[0].id);
+                        }
+                    } catch (err) { console.error("導入失敗", err); }
+                };
+            };
+
+            const onDragStart = (index, type) => {
+                if (type === 'project') setDraggedProjectIndex(index);
+                if (type === 'record') setDraggedItemIndex(index);
+            };
+
+            const onDrop = (index, type) => {
+                if (type === 'project' && draggedProjectIndex !== null) {
+                    const newProjects = [...projects];
+                    const draggedItem = newProjects[draggedProjectIndex];
+                    newProjects.splice(draggedProjectIndex, 1);
+                    newProjects.splice(index, 0, draggedItem);
+                    setProjects(newProjects);
+                    setDraggedProjectIndex(null);
+                }
+                if (type === 'record' && draggedItemIndex !== null) {
+                    const newRecords = [...activeProject.records];
+                    const draggedItem = newRecords[draggedItemIndex];
+                    newRecords.splice(draggedItemIndex, 1);
+                    newRecords.splice(index, 0, draggedItem);
+                    setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: newRecords } : p));
+                    setDraggedItemIndex(null);
+                }
+            };
+
+            const addProject = () => {
+                const newId = Date.now().toString();
+                setProjects([...projects, { id: newId, name: '新委託分頁', items: [], records: [] }]);
+                setActiveProjectId(newId);
+            };
+
+            const deleteProject = (id, e) => {
+                e.stopPropagation();
+                if (projects.length <= 1) return;
+                const filtered = projects.filter(p => p.id !== id);
+                setProjects(filtered);
+                if (activeProjectId === id) setActiveProjectId(filtered[0].id);
+            };
+
+            const updateProjectName = (newName) => {
+                setProjects(projects.map(p => p.id === activeProjectId ? { ...p, name: newName } : p));
+            };
+
+            const updateProjectItems = (newItems) => {
+                setProjects(projects.map(p => p.id === activeProjectId ? { ...p, items: newItems } : p));
+            };
+
+            const addRecord = () => {
+                const newRecord = { id: Date.now().toString(), clientId: '新委託人', selectedItems: [], addonText: '', addonPrice: 0, amount: 0 };
+                setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: [newRecord, ...p.records] } : p));
+                setEditingRecordId(newRecord.id);
+                setEditFormData({ ...newRecord });
+            };
+
+            const saveEdit = () => {
+                setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: p.records.map(r => r.id === editingRecordId ? editFormData : r) } : p));
+                setEditingRecordId(null);
+            };
+
+            return (
+                <div className="flex h-screen overflow-hidden text-slate-800" style={{ backgroundColor: THEME.bgMain, fontFamily: THEME.fontFamily }}>
+                    {/* 左側：分頁清單 */}
+                    <aside className="w-64 bg-white border-r flex flex-col shadow-sm" style={{ borderColor: THEME.border }}>
+                        <div className="p-6 flex items-center justify-between border-b" style={{ borderColor: THEME.border }}>
+                            <h1 className="font-bold text-xl flex items-center gap-2" style={{ color: THEME.primary }}>
+                                <Icon name="Layout" size={20} /> 排單管理
+                            </h1>
+                            <button onClick={addProject} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                                <Icon name="Plus" size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                            {projects.map((p, index) => (
+                                <div 
+                                    key={p.id}
+                                    draggable
+                                    onDragStart={() => onDragStart(index, 'project')}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={() => onDrop(index, 'project')}
+                                    onClick={() => setActiveProjectId(p.id)}
+                                    className={`group flex items-center justify-between p-3 rounded-xl cursor-grab active:cursor-grabbing transition-all ${activeProjectId === p.id ? 'shadow-md shadow-slate-200' : 'hover:bg-slate-100 text-slate-600'}`}
+                                    style={{ backgroundColor: activeProjectId === p.id ? THEME.primary : 'transparent', color: activeProjectId === p.id ? '#ffffff' : '' }}
+                                >
+                                    <div className="flex items-center gap-3 truncate">
+                                        <Icon name="GripVertical" size={14} className="opacity-30 group-hover:opacity-100" />
+                                        <span className="font-medium truncate">{p.name}</span>
+                                    </div>
+                                    {projects.length > 1 && (
+                                        <button onClick={(e) => deleteProject(p.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/20 rounded">
+                                            <Icon name="X" size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 border-t space-y-2" style={{ borderColor: THEME.border }}>
+                            <button onClick={exportData} className="w-full flex items-center justify-center gap-2 text-xs font-bold py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all">
+                                <Icon name="Download" size={14} /> 導出 JSON 備份
+                            </button>
+                            <label className="w-full flex items-center justify-center gap-2 text-xs font-bold py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all cursor-pointer">
+                                <Icon name="Upload" size={14} /> 導入紀錄檔案
+                                <input type="file" className="hidden" accept=".json" onChange={importData} />
+                            </label>
+                        </div>
+                    </aside>
+
+                    {/* 右側：內容區 */}
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
+                            <section className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200" style={{ borderColor: THEME.border }}>
+                                <div className="flex flex-col md:flex-row justify-between gap-6">
+                                    <div className="space-y-4 flex-1">
+                                        <input 
+                                            type="text" value={activeProject?.name || ''} 
+                                            onChange={(e) => updateProjectName(e.target.value)}
+                                            className="text-4xl font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-100 focus:border-slate-500 focus:outline-none transition-all w-full"
+                                        />
+                                        <div className="flex gap-3">
+                                            <button onClick={() => setIsConfiguringItems(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-bold text-sm">
+                                                <Icon name="Settings" size={16} /> 品項設定
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-2xl px-8 py-4 text-right flex flex-col justify-center" style={{ backgroundColor: THEME.successBg }}>
+                                        <span className="text-xs font-black uppercase tracking-widest block mb-1" style={{ color: THEME.success }}>頁面總金額</span>
+                                        <span className="text-3xl font-black" style={{ color: THEME.success }}>
+                                            <small className="text-base font-normal opacity-70 mr-1">NT$</small>
+                                            {totalAmount.toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                        <Icon name="User" size={20} className="text-slate-500" style={{ color: THEME.primary }} /> 委託人清單
+                                    </h2>
+                                    <button onClick={addRecord} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-2xl transition-all shadow-lg font-bold" style={{ backgroundColor: THEME.primary }}>
+                                        <Icon name="Plus" size={20} /> 新增委託
+                                    </button>
+                                </div>
+
+                                <div className="bg-white rounded-3xl border shadow-sm overflow-hidden" style={{ borderColor: THEME.border }}>
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 border-b" style={{ borderColor: THEME.border }}>
+                                                <th className="w-12 px-6 py-4"></th>
+                                                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">委託人 ID</th>
+                                                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">內容品項</th>
+                                                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">金額</th>
+                                                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y" style={{ borderColor: THEME.border }}>
+                                            {activeProject?.records.map((record, index) => (
+                                                <tr 
+                                                    key={record.id}
+                                                    draggable={editingRecordId !== record.id}
+                                                    onDragStart={() => onDragStart(index, 'record')}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDrop={() => onDrop(index, 'record')}
+                                                    className={`transition-colors ${draggedItemIndex === index ? 'opacity-50' : 'hover:bg-slate-50/50'}`}
+                                                >
+                                                    {editingRecordId === record.id ? (
+                                                        <>
+                                                            <td className="px-6 py-4"><Icon name="Check" size={16} className="text-slate-300" /></td>
+                                                            <td className="px-6 py-4">
+                                                                <input 
+                                                                    type="text" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none"
+                                                                    value={editFormData.clientId}
+                                                                    onChange={(e) => setEditFormData({...editFormData, clientId: e.target.value})}
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4 space-y-4">
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {activeProject.items.map(item => {
+                                                                        const found = editFormData.selectedItems.find(si => si.name === item.name);
+                                                                        return (
+                                                                            <div key={item.id} className="flex items-center bg-slate-100 p-1 pr-2 gap-2 border border-slate-200 rounded-none">
+                                                                                <span className="text-xs pl-2 font-bold text-slate-600">{item.name}</span>
+                                                                                <input 
+                                                                                    type="number" min="0" className="w-10 text-center bg-white rounded-none border border-slate-200 text-xs p-1 outline-none"
+                                                                                    value={found ? found.count : 0}
+                                                                                    onChange={(e) => {
+                                                                                        const count = parseInt(e.target.value) || 0;
+                                                                                        let newSelected = [...editFormData.selectedItems];
+                                                                                        if (count > 0) {
+                                                                                            const idx = newSelected.findIndex(s => s.name === item.name);
+                                                                                            if (idx > -1) newSelected[idx].count = count;
+                                                                                            else newSelected.push({ name: item.name, count, price: item.price });
+                                                                                        } else newSelected = newSelected.filter(s => s.name !== item.name);
+                                                                                        const baseTotal = newSelected.reduce((s, i) => s + (i.price * i.count), 0);
+                                                                                        setEditFormData({ ...editFormData, selectedItems: newSelected, amount: baseTotal + (Number(editFormData.addonPrice) || 0) });
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <input type="text" placeholder="加購內容" className="flex-1 p-2 border rounded-none text-sm" value={editFormData.addonText} onChange={(e) => setEditFormData({...editFormData, addonText: e.target.value})} />
+                                                                    <input type="number" placeholder="金額" className="w-24 p-2 border rounded-none text-sm font-bold" value={editFormData.addonPrice} onChange={(e) => {
+                                                                        const val = Number(e.target.value) || 0;
+                                                                        const baseTotal = editFormData.selectedItems.reduce((s, i) => s + (i.price * i.count), 0);
+                                                                        setEditFormData({...editFormData, addonPrice: val, amount: baseTotal + val});
+                                                                    }} />
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <input type="number" className="w-28 p-2 border rounded-none font-black outline-none" style={{ backgroundColor: THEME.primaryLight, color: THEME.primary }} value={editFormData.amount} onChange={(e) => setEditFormData({...editFormData, amount: Number(e.target.value)})} />
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <button onClick={saveEdit} className="p-2 text-white rounded-lg shadow-sm" style={{ backgroundColor: THEME.primary }}><Icon name="Check" size={18} /></button>
+                                                                    <button onClick={() => setEditingRecordId(null)} className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:bg-slate-200"><Icon name="X" size={18} /></button>
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-6 py-4 cursor-grab active:cursor-grabbing text-slate-300">
+                                                                <Icon name="GripVertical" size={16} />
+                                                            </td>
+                                                            <td className="px-6 py-4 font-bold text-slate-700">{record.clientId}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {record.selectedItems.map((si, idx) => (
+                                                                        <span key={idx} className="inline-flex items-center px-3 py-1 text-xs font-bold shadow-sm border rounded-lg" style={{ backgroundColor: THEME.primaryLight, color: THEME.primary, borderColor: '#e2e8f0' }}>
+                                                                            {si.name} × {si.count}
+                                                                        </span>
+                                                                    ))}
+                                                                    {record.addonText && (
+                                                                        <span className="inline-flex items-center px-3 py-1 text-xs font-bold border rounded-lg" style={{ backgroundColor: THEME.warningBg, color: THEME.warning, borderColor: '#ffedd5' }}>
+                                                                            加購：{record.addonText}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 font-black text-slate-800">
+                                                                <span className="text-xs opacity-40 font-normal mr-1">NT$</span>
+                                                                {Number(record.amount).toLocaleString()}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <button onClick={() => { setEditingRecordId(record.id); setEditFormData({...record}); }} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"><Icon name="Edit2" size={16} /></button>
+                                                                    <button onClick={() => setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: p.records.filter(r => r.id !== record.id) } : p))} className="p-2 text-slate-400 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"><Icon name="Trash2" size={16} /></button>
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    {/* 品項管理彈窗 */}
+                    {isConfiguringItems && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden">
+                                <div className="p-8 border-b flex justify-between items-center bg-slate-50/50">
+                                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                        <Icon name="ShoppingBag" size={22} style={{ color: THEME.primary }} /> 品項選單設定
+                                    </h3>
+                                    <button onClick={() => setIsConfiguringItems(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><Icon name="X" size={20} /></button>
+                                </div>
+                                <div className="p-8 space-y-4 max-h-[50vh] overflow-y-auto">
+                                    {activeProject.items.map((item, idx) => (
+                                        <div key={item.id} className="flex gap-3 items-center">
+                                            <input className="flex-1 p-3 border border-slate-200 rounded-none text-sm font-bold focus:ring-2 focus:ring-slate-500 outline-none" value={item.name} onChange={(e) => {
+                                                const newItems = [...activeProject.items];
+                                                newItems[idx].name = e.target.value;
+                                                updateProjectItems(newItems);
+                                            }} />
+                                            <input type="number" className="w-28 p-3 border border-slate-200 rounded-none text-sm font-bold outline-none" style={{ color: THEME.success }} value={item.price} onChange={(e) => {
+                                                const newItems = [...activeProject.items];
+                                                newItems[idx].price = Number(e.target.value);
+                                                updateProjectItems(newItems);
+                                            }} />
+                                            <button onClick={() => updateProjectItems(activeProject.items.filter((_, i) => i !== idx))} className="p-2 text-slate-300 hover:text-red-500"><Icon name="Trash2" size={18} /></button>
+                                        </div>
+                                    ))}
+                                    <button onClick={() => updateProjectItems([...activeProject.items, { id: Date.now().toString(), name: '', price: 0 }])} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-none text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-all text-sm font-bold">+ 新增自定義品項</button>
+                                </div>
+                                <div className="p-8 bg-slate-50 border-t flex justify-end">
+                                    <button onClick={() => setIsConfiguringItems(false)} className="px-8 py-3 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all" style={{ backgroundColor: THEME.primary }}>完成保存</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-              </div>
+            );
+        }
 
-              <div className="rounded-2xl px-8 py-4 text-right flex flex-col justify-center" style={{ backgroundColor: THEME.successBg }}>
-                <span className="text-xs font-black uppercase tracking-widest block mb-1" style={{ color: THEME.success }}>頁面總金額</span>
-                <span className="text-3xl font-black" style={{ color: THEME.success }}>
-                  <small className="text-base font-normal opacity-70 mr-1">NT$</small>
-                  {totalAmount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* 列表區 */}
-          <section className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <User size={20} style={{ color: THEME.primary }} /> 委託人清單
-              </h2>
-              <button onClick={addRecord} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-2xl transition-all shadow-lg font-bold" style={{ backgroundColor: THEME.primary }}>
-                <Plus size={20} /> 新增委託
-              </button>
-            </div>
-
-            <div className="bg-white rounded-3xl border shadow-sm overflow-hidden" style={{ borderColor: THEME.border }}>
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-slate-50/50 border-b" style={{ borderColor: THEME.border }}>
-                    <th className="w-12 px-6 py-4"></th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">委託人 ID</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">內容品項</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">金額</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: THEME.border }}>
-                  {activeProject?.records.map((record, index) => (
-                    <tr 
-                      key={record.id}
-                      draggable={editingRecordId !== record.id}
-                      onDragStart={() => onDragStart(index, 'record')}
-                      onDragOver={onDragOver}
-                      onDrop={() => onDrop(index, 'record')}
-                      className={`transition-colors ${draggedItemIndex === index ? 'opacity-50' : 'hover:bg-slate-50/50'}`}
-                    >
-                      {editingRecordId === record.id ? (
-                        /* 編輯模式 */
-                        <>
-                          <td className="px-6 py-4"><Check size={16} className="text-slate-300" /></td>
-                          <td className="px-6 py-4">
-                            <input 
-                              type="text" 
-                              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                              value={editFormData.clientId}
-                              onChange={(e) => setEditFormData({...editFormData, clientId: e.target.value})}
-                            />
-                          </td>
-                          <td className="px-6 py-4 space-y-4">
-                            <div className="flex flex-wrap gap-2">
-                              {activeProject.items.map(item => {
-                                const found = editFormData.selectedItems.find(si => si.name === item.name);
-                                return (
-                                  <div key={item.id} className="flex items-center bg-slate-100 p-1 pr-2 gap-2 border border-slate-200 rounded-lg">
-                                    <span className="text-xs pl-2 font-bold text-slate-600">{item.name}</span>
-                                    <input 
-                                      type="number" min="0" className="w-10 text-center bg-white rounded-lg border border-slate-200 text-xs p-1 outline-none"
-                                      value={found ? found.count : 0}
-                                      onChange={(e) => {
-                                        const count = parseInt(e.target.value) || 0;
-                                        let newSelected = [...editFormData.selectedItems];
-                                        if (count > 0) {
-                                          const idx = newSelected.findIndex(s => s.name === item.name);
-                                          if (idx > -1) newSelected[idx].count = count;
-                                          else newSelected.push({ name: item.name, count, price: item.price });
-                                        } else newSelected = newSelected.filter(s => s.name !== item.name);
-                                        const baseTotal = newSelected.reduce((s, i) => s + (i.price * i.count), 0);
-                                        setEditFormData({ ...editFormData, selectedItems: newSelected, amount: baseTotal + (Number(editFormData.addonPrice) || 0) });
-                                      }}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <div className="flex gap-2">
-                              <input 
-                                type="text" placeholder="加購內容" className="flex-1 p-2 border rounded-lg text-sm"
-                                value={editFormData.addonText}
-                                onChange={(e) => setEditFormData({...editFormData, addonText: e.target.value})}
-                              />
-                              <input 
-                                type="number" placeholder="金額" className="w-24 p-2 border rounded-none text-sm font-bold"
-                                value={editFormData.addonPrice}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value) || 0;
-                                  const baseTotal = editFormData.selectedItems.reduce((s, i) => s + (i.price * i.count), 0);
-                                  setEditFormData({...editFormData, addonPrice: val, amount: baseTotal + val});
-                                }}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <input 
-                              type="number" className="w-28 p-2 border rounded-none font-black text-indigo-600 outline-none" style={{ backgroundColor: THEME.primaryLight }}
-                              value={editFormData.amount}
-                              onChange={(e) => setEditFormData({...editFormData, amount: Number(e.target.value)})}
-                            />
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button onClick={saveEdit} className="p-2 text-white rounded-lg shadow-sm" style={{ backgroundColor: THEME.primary }}><Check size={18} /></button>
-                              <button onClick={() => setEditingRecordId(null)} className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:bg-slate-200"><X size={18} /></button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        /* 一般顯示模式 */
-                        <>
-                          <td className="px-6 py-4 cursor-grab active:cursor-grabbing text-slate-300">
-                            <GripVertical size={16} />
-                          </td>
-                          <td className="px-6 py-4 font-bold text-slate-700">{record.clientId}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-2">
-                              {record.selectedItems.map((si, idx) => (
-                                <span key={idx} className="inline-flex items-center px-3 py-1 text-xs font-bold shadow-sm border rounded-none" style={{ backgroundColor: THEME.primaryLight, color: THEME.primary, borderColor: '#e0e7ff' }}>
-                                  {si.name} × {si.count}
-                                </span>
-                              ))}
-                              {record.addonText && (
-                                <span className="inline-flex items-center px-3 py-1 text-xs font-bold border rounded-none" style={{ backgroundColor: THEME.warningBg, color: THEME.warning, borderColor: '#fef3c7' }}>
-                                  加購：{record.addonText}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 font-black text-slate-800">
-                            <span className="text-xs opacity-40 font-normal mr-1">NT$</span>
-                            {Number(record.amount).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            {/* 移除了原本的 opacity-0 以確保按鈕可見 */}
-                            <div className="flex justify-end gap-2 transition-opacity">
-                              <button 
-                                onClick={() => { setEditingRecordId(record.id); setEditFormData({...record}); }} 
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                title="編輯"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button 
-                                onClick={() => setProjects(projects.map(p => p.id === activeProjectId ? { ...p, records: p.records.filter(r => r.id !== record.id) } : p))} 
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                title="刪除"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      {/* 品項管理彈窗 */}
-      {isConfiguringItems && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-8 border-b flex justify-between items-center bg-slate-50/50">
-              <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                <ShoppingBag size={22} style={{ color: THEME.primary }} /> 品項選單設定
-              </h3>
-              <button onClick={() => setIsConfiguringItems(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
-            </div>
-            <div className="p-8 space-y-4 max-h-[50vh] overflow-y-auto">
-              {activeProject.items.map((item, idx) => (
-                <div key={item.id} className="flex gap-3 items-center">
-                  <input 
-                    className="flex-1 p-3 border border-slate-200 rounded-none text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="品項名稱" value={item.name}
-                    onChange={(e) => {
-                      const newItems = [...activeProject.items];
-                      newItems[idx].name = e.target.value;
-                      updateProjectItems(newItems);
-                    }}
-                  />
-                  <input 
-                    type="number" className="w-28 p-3 border border-slate-200 rounded-none text-sm font-bold text-emerald-600 outline-none"
-                    placeholder="單價" value={item.price}
-                    onChange={(e) => {
-                      const newItems = [...activeProject.items];
-                      newItems[idx].price = Number(e.target.value);
-                      updateProjectItems(newItems);
-                    }}
-                  />
-                  <button onClick={() => updateProjectItems(activeProject.items.filter((_, i) => i !== idx))} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18} /></button>
-                </div>
-              ))}
-              <button 
-                onClick={() => updateProjectItems([...activeProject.items, { id: Date.now().toString(), name: '', price: 0 }])}
-                className="w-full p-4 border-2 border-dashed border-slate-200 rounded-none text-slate-400 hover:border-indigo-300 hover:text-indigo-600 transition-all text-sm font-bold"
-              >
-                + 新增自定義品項
-              </button>
-            </div>
-            <div className="p-8 bg-slate-50 border-t flex justify-end">
-              <button onClick={() => setIsConfiguringItems(false)} className="px-8 py-3 text-white rounded-2xl font-black shadow-lg hover:scale-105 transition-all" style={{ backgroundColor: THEME.primary }}>
-                完成保存
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
