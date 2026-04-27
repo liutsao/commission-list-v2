@@ -65,7 +65,10 @@
         const Icon = ({ name, size = 20, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
-                lucide.createIcons();
+                // 每次名稱改變時強制重新掃描圖示
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
             }, [name]);
             
             const lucideName = name.charAt(0).toLowerCase() + name.slice(1).replace(/[A-Z]/g, m => "-" + m.toLowerCase());
@@ -95,7 +98,7 @@
 
             useEffect(() => {
                 localStorage.setItem('commission_projects', JSON.stringify(projects));
-                lucide.createIcons();
+                if (window.lucide) window.lucide.createIcons();
             }, [projects, activeProjectId, editingRecordId, isConfiguringItems]);
 
             const activeProject = useMemo(() => 
@@ -223,7 +226,7 @@
                                         <span className="font-medium truncate tracking-wide">{p.name}</span>
                                     </div>
                                     {projects.length > 1 && (
-                                        <button onClick={(e) => deleteProject(p.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/20 rounded">
+                                        <button onClick={(e) => deleteProject(p.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/20 rounded text-inherit">
                                             <Icon name="X" size={14} />
                                         </button>
                                     )}
@@ -299,10 +302,10 @@
                                                     onDrop={() => onDrop(index, 'record')}
                                                     className={`transition-colors ${draggedItemIndex === index ? 'opacity-50' : 'hover:bg-slate-50/50'}`}
                                                 >
-                                                    {/* ==========================================
-                                                        狀態判斷：正在編輯中 (包含新產生的資料)
-                                                        ========================================== */}
                                                     {editingRecordId === record.id ? (
+                                                        /* ==========================================
+                                                           ⚠️ [編輯狀態] 圖示必須是 Check 與 X
+                                                           ========================================== */
                                                         <>
                                                             <td className="px-6 py-4"><Icon name="Check" size={16} className="text-slate-300" /></td>
                                                             <td className="px-6 py-4">
@@ -352,11 +355,9 @@
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end gap-2">
-                                                                    {/* 編輯狀態下：永遠顯示勾勾 (Check) */}
                                                                     <button onClick={saveEdit} className="p-2 text-white rounded-lg shadow-sm" style={{ backgroundColor: THEME.primary }}>
                                                                         <Icon name="Check" size={18} />
                                                                     </button>
-                                                                    {/* 編輯狀態下：永遠顯示叉叉 (X) */}
                                                                     <button onClick={() => setEditingRecordId(null)} className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:bg-slate-200">
                                                                         <Icon name="X" size={18} />
                                                                     </button>
@@ -365,7 +366,7 @@
                                                         </>
                                                     ) : (
                                                         /* ==========================================
-                                                           狀態判斷：一般顯示模式
+                                                           🖼️ [顯示狀態] 圖示必須是 Pencil 與 Trash
                                                            ========================================== */
                                                         <>
                                                             <td className="px-6 py-4 cursor-grab active:cursor-grabbing text-slate-300">
@@ -392,11 +393,9 @@
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end gap-2">
-                                                                    {/* 顯示狀態下：永遠顯示鉛筆 (Pencil) */}
                                                                     <button onClick={() => { setEditingRecordId(record.id); setEditFormData({...record}); }} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
                                                                         <Icon name="Pencil" size={16} />
                                                                     </button>
-                                                                    {/* 顯示狀態下：永遠顯示垃圾桶 (Trash) */}
                                                                     <button onClick={() => deleteRecord(record.id)} className="p-2 text-slate-400 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all">
                                                                         <Icon name="Trash" size={16} />
                                                                     </button>
@@ -431,7 +430,7 @@
                                                 newItems[idx].name = e.target.value;
                                                 updateProjectItems(newItems);
                                             }} />
-                                            <input type="number" className="w-28 p-3 border border-slate-200 rounded-none text-sm font-bold outline-none" style={{ color: THEME.success }} value={item.price} onChange={(e) => {
+                                            <input type="number" className="w-28 p-3 border border-slate-200 rounded-none text-sm font-bold outline-none text-emerald-600" value={item.price} onChange={(e) => {
                                                 const newItems = [...activeProject.items];
                                                 newItems[idx].price = Number(e.target.value);
                                                 updateProjectItems(newItems);
