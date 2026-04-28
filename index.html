@@ -350,7 +350,7 @@
                                     </h2>
 
                                     <div className="flex gap-3">
-                                        <button onClick={() => setIsConfiguringItems(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-2xl transition-all shadow-lg font-bold text-sm">
+                                        <button onClick={() => setIsConfiguringItems(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-2xl transition-all shadow-base font-bold text-sm">
                                             <Icon name="Settings" size={16} /> 品項設定
                                             </button>
                                     <button onClick={addRecord} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-2xl transition-all shadow-lg font-bold text-sm" style={{ backgroundColor: THEME.primary }}>
@@ -394,7 +394,7 @@
                                                                             <div key={item.id} className="flex items-center bg-slate-100 p-1 pr-2 gap-2 border border-slate-200 rounded-none">
                                                                                 <span className="text-xs pl-2 font-bold text-slate-600">{item.name}</span>
                                                                                 <input 
-                                                                                    type="number" min="0" className="w-10 text-center bg-white rounded-none border border-slate-200 text-xs p-1 outline-none"
+                                                                                    type="number" min="0" className="w-10 text-center bg-white rounded-lg border border-slate-200 text-xs p-1 outline-none"
                                                                                     value={found ? found.count : 0}
                                                                                     onChange={(e) => {
                                                                                         const count = parseInt(e.target.value) || 0;
@@ -413,8 +413,8 @@
                                                                     })}
                                                                 </div>
                                                                 <div className="flex gap-2">
-                                                                    <input type="text" placeholder="加購內容" className="flex-1 p-2 border rounded-none text-sm" value={editFormData.addonText} onChange={(e) => setEditFormData({...editFormData, addonText: e.target.value})} />
-                                                                    <input type="number" placeholder="金額" step="10" className="w-24 p-2 border rounded-none text-sm font-bold" value={editFormData.addonPrice} onChange={(e) => {
+                                                                    <input type="text" placeholder="加購內容" className="flex-1 p-2 border rounded-xl text-sm" value={editFormData.addonText} onChange={(e) => setEditFormData({...editFormData, addonText: e.target.value})} />
+                                                                    <input type="number" placeholder="金額" step="10" className="w-24 p-2 border rounded-xl text-sm font-bold" value={editFormData.addonPrice} onChange={(e) => {
                                                                         const val = Number(e.target.value) || 0;
                                                                         const baseTotal = editFormData.selectedItems.reduce((s, i) => s + (i.price * i.count), 0);
                                                                         setEditFormData({...editFormData, addonPrice: val, amount: baseTotal + val});
@@ -422,7 +422,7 @@
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
-                                                                <input type="number" step="10" className="w-28 p-2 border rounded-none font-black outline-none" style={{ backgroundColor: THEME.primaryLight, color: THEME.primary }} value={editFormData.amount} onChange={(e) => setEditFormData({...editFormData, amount: Number(e.target.value)})} />
+                                                                <input type="number" step="10" className="w-28 p-2 border rounded-xl font-black outline-none" style={{ backgroundColor: THEME.primaryLight, color: THEME.primary }} value={editFormData.amount} onChange={(e) => setEditFormData({...editFormData, amount: Number(e.target.value)})} />
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end gap-2">
