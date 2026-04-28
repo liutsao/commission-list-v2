@@ -317,18 +317,19 @@
                                         <input 
                                             type="text" value={activeProject?.name || ''} 
                                             onChange={(e) => updateProjectName(e.target.value)}
-                                            className="text-4xl font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-100 focus:border-slate-500 focus:outline-none transition-all w-full tracking-tighter"
+                                            className="text-4xl font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-100 focus:border-slate-500 focus:outline-none focus:ring-0 transition-all w-full tracking-tighter"
+                                            style={{ outline: 'none' }}
                                         />
                                         </div>
                                         {/* 副標題 / 備註欄位 */}
-                                        <div className="pl-12"> {/* pl-7 代表左側內距 */}
+                                        <div className="pl-10"> {/* pl-10 代表左側內距 */}
                                             <input 
                                                 type="text" 
                                                 placeholder="在此輸入備註或補充文字..."
                                                 value={activeProject?.description || ''} 
                                                 onChange={(e) => updateProjectDescription(e.target.value)}
                                                 className="w-full bg-transparent border-b border-transparent hover:border-slate-100 focus:border-slate-300 focus:outline-none focus:ring-0 text-slate-500 text-sm font-medium transition-all"
-                                                style={{ fontFamily: THEME.fontFamily }}
+                                                style={{ fontFamily: THEME.fontFamily, outline: 'none' }}
                                             />
                                         </div>
                                     </div>
