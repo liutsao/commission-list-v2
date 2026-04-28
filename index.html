@@ -316,11 +316,6 @@
                                             className="text-4xl font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-100 focus:border-slate-500 focus:outline-none transition-all w-full tracking-tighter"
                                         />
                                         </div>
-                                        <div className="flex gap-3">
-                                            <button onClick={() => setIsConfiguringItems(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-bold text-sm">
-                                                <Icon name="Settings" size={16} /> 品項設定
-                                            </button>
-                                        </div>
                                     </div>
                                     <div className="rounded-2xl px-8 py-4 text-right flex flex-col justify-center" style={{ backgroundColor: THEME.successBg }}>
                                         <span className="text-xs font-black uppercase tracking-widest block mb-1" style={{ color: THEME.success }}>本次勞動總金額</span>
@@ -337,8 +332,13 @@
                                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                         <Icon name="User" size={20} className="text-slate-500" style={{ color: THEME.primary }} /> 委託人清單
                                     </h2>
-                                    <button onClick={addRecord} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-2xl transition-all shadow-lg font-bold" style={{ backgroundColor: THEME.primary }}>
-                                        <Icon name="Plus" size={20} /> 新增委託人
+
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setIsConfiguringItems(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-all font-bold text-sm">
+                                            <Icon name="Settings" size={16} /> 品項設定
+                                            </button>
+                                    <button onClick={addRecord} className="flex items-center gap-2 px-5 py-2.5 text-white rounded-2xl transition-all shadow-lg font-bold text-sm" style={{ backgroundColor: THEME.primary }}>
+                                        <Icon name="Plus" size={16} /> 新增委託人
                                     </button>
                                 </div>
 
