@@ -219,7 +219,7 @@
 
             const addProject = () => {
                 const newId = Date.now().toString();
-                setProjects([...projects, { id: newId, name: '新委託分頁', items: [], records: [] }]);
+                setProjects([...projects, { id: newId, name: '新委託分頁', description: '', items: [], records: [] }]);
                 setActiveProjectId(newId);
             };
 
@@ -233,6 +233,10 @@
 
             const updateProjectName = (newName) => {
                 setProjects(projects.map(p => p.id === activeProjectId ? { ...p, name: newName } : p));
+            };
+
+            const updateProjectDescription = (newDesc) => {
+                setProjects(projects.map(p => p.id === activeProjectId ? { ...p, description: newDesc } : p));
             };
 
             const updateProjectItems = (newItems) => {
@@ -309,12 +313,23 @@
                                 <div className="flex flex-col md:flex-row justify-between gap-6">
                                     <div className="space-y-4 flex-1">
                                         <div className="flex items-center">
-                                        <span className="text-4xl font-black mr-3 select-none" style={{ color: THEME.border }}>｜ </span>
+                                        <span className="text-4xl font-black mr-3 select-none" style={{ color: THEME.border }}>｜</span>
                                         <input 
                                             type="text" value={activeProject?.name || ''} 
                                             onChange={(e) => updateProjectName(e.target.value)}
                                             className="text-4xl font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-100 focus:border-slate-500 focus:outline-none transition-all w-full tracking-tighter"
                                         />
+                                        </div>
+                                        {/* 副標題 / 備註欄位 */}
+                                        <div className="pl-7"> {/* pl-7 代表左側內距 */}
+                                            <input 
+                                                type="text" 
+                                                placeholder="在此輸入備註或補充文字..."
+                                                value={activeProject?.description || ''} 
+                                                onChange={(e) => updateProjectDescription(e.target.value)}
+                                                className="w-full bg-transparent border-b border-transparent hover:border-slate-100 focus:border-slate-300 focus:outline-none text-slate-500 text-sm font-medium transition-all"
+                                                style={{ fontFamily: THEME.fontFamily }}
+                                            />
                                         </div>
                                     </div>
                                     <div className="rounded-2xl px-8 py-4 text-right flex flex-col justify-center" style={{ backgroundColor: THEME.successBg }}>
