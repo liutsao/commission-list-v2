@@ -13,6 +13,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Silkscreen:wght@400;700&display=swap');
         
         body {
             margin: 0;
@@ -44,7 +45,7 @@
          * ==========================================
          */
         const THEME = {
-            fontFamily: "'精品點陣體9×9 1.92', 'Noto Sans TC', system-ui, sans-serif",
+            fontFamily: "'精品點陣體9×9 1.92', 'DotGothic16', 'Noto Sans TC', system-ui, sans-serif",
             primary: "#334155", 
             primaryHover: "#1e293b", 
             primaryLight: "#f1f5f9", 
@@ -357,7 +358,7 @@
                                                 >
                                                     {editingRecordId === record.id ? (
                                                         <>
-                                                            <td className="px-6 py-4"><Icon name="Check" size={16} className="text-slate-300" /></td>
+                                                            <td className="px-6 py-4"><Icon name="Grip" size={16} className="text-slate-300" /></td>
                                                             <td className="px-6 py-4">
                                                                 <input 
                                                                     type="text" className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-slate-500 outline-none font-bold text-sm"
